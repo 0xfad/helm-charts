@@ -5,7 +5,7 @@ type: application
 # This is the chart version. Bump it on every change to the chart itself.
 version: 0.1.0
 # This is the version of AFFiNE that this chart deploys by default (image tag "stable").
-appVersion: "stable"
+appVersion: "0.26.6"
 home: https://affine.pro
 sources:
   - https://github.com/toeverything/AFFiNE
@@ -18,5 +18,5 @@ keywords:
   - collaboration
 icon: https://affine.pro/favicon-96.png
 maintainers:
-  - name: me
+  - name: Marco Fadda
     email: me@0xfad.dev

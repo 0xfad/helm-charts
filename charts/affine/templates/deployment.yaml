@@ -47,23 +47,6 @@ spec:
               echo "Waiting for Redis at {{ include "affine.redis.host" . }}:{{ ternary "6379" (printf "%v" .Values.externalRedis.port) .Values.redis.enabled }}..."
               until nc -z {{ include "affine.redis.host" . }} {{ ternary "6379" (printf "%v" .Values.externalRedis.port) .Values.redis.enabled }}; do sleep 2; done
               echo "Dependencies are ready."
-        {{- if .Values.migration.enabled }}
-        - name: affine-migration
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["sh", "-c", "node ./scripts/self-host-predeploy.js"]
-          env:
-            {{- include "affine.env" . | nindent 12 }}
-          {{- with .Values.migration.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            - name: storage
-              mountPath: /root/.affine/storage
-            - name: config
-              mountPath: /root/.affine/config
-        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}

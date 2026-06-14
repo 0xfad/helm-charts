@@ -160,6 +160,32 @@ The plaintext database password used when the chart manages its own secret.
 {{- end }}
 
 {{/*
+Name of the secret holding AFFINE_PRIVATE_KEY.
+*/}}
+{{- define "affine.privateKey.secretName" -}}
+{{- .Values.affine.privateKey.existingSecret | default (include "affine.secretName" .) }}
+{{- end }}
+
+{{- define "affine.privateKey.secretKey" -}}
+{{- .Values.affine.privateKey.existingSecretKey | default "private-key" }}
+{{- end }}
+
+{{/*
+Resolve the private key value for use in the chart-managed Secret.
+Uses `lookup` to reuse an existing value across helm upgrades so that
+token signing keys survive chart upgrades without the user having to
+manage the secret manually.
+*/}}
+{{- define "affine.privateKey.value" -}}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace (include "affine.secretName" .) -}}
+{{- if and $existing (index $existing.data "private-key") -}}
+{{- index $existing.data "private-key" | b64dec }}
+{{- else -}}
+{{- genPrivateKey "ed25519" }}
+{{- end -}}
+{{- end }}
+
+{{/*
 Shared environment for the AFFiNE server and the migration job.
 DATABASE_URL relies on Kubernetes $(VAR) expansion of DB_PASSWORD, so the
 plaintext password never has to be rendered into the manifest.
@@ -189,9 +215,16 @@ plaintext password never has to be rendered into the manifest.
 {{- end }}
 - name: AFFINE_INDEXER_ENABLED
   value: {{ .Values.affine.indexerEnabled | quote }}
+- name: AFFINE_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "affine.privateKey.secretName" . }}
+      key: {{ include "affine.privateKey.secretKey" . }}
 {{- if .Values.affine.serverExternalUrl }}
 - name: AFFINE_SERVER_EXTERNAL_URL
   value: {{ .Values.affine.serverExternalUrl | quote }}
+- name: AFFINE_SERVER_HTTPS
+  value: {{ hasPrefix "https://" .Values.affine.serverExternalUrl | quote }}
 {{- end }}
 {{- with .Values.affine.extraEnv }}
 {{- toYaml . }}

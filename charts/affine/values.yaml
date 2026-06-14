@@ -11,7 +11,7 @@ image:
   repository: ghcr.io/toeverything/affine
   pullPolicy: IfNotPresent
   # Image tag. Defaults to the chart appVersion ("stable"). Use "canary" for nightly builds
-  # or a pinned version such as "0.25.7".
+  # or a pinned version such as "0.26.6".
   tag: ""
 
 imagePullSecrets: []
@@ -28,6 +28,18 @@ affine:
   # Disable the (resource-heavy) full-text indexer by default, matching the
   # official docker-compose. Enable it only if you run pgvector and want search/AI.
   indexerEnabled: false
+
+  # -- Cryptographic private key used to sign all JWT tokens.
+  # If not set via existingSecret, the chart auto-generates an Ed25519 PEM key on
+  # first install and persists it in the managed Secret across upgrades (via
+  # Helm's `lookup`). Without persistence every pod restart would invalidate all
+  # user sessions.
+  privateKey:
+    # Use a pre-existing Secret instead of the chart-managed one.
+    existingSecret: ""
+    # Key name inside that Secret.
+    existingSecretKey: private-key
+
   # Extra environment variables passed verbatim to the AFFiNE container.
   # See https://docs.affine.pro/self-host-affine/references/environment-variables
   extraEnv: []
@@ -36,9 +48,9 @@ affine:
   # Extra envFrom sources (ConfigMaps / Secrets) for the AFFiNE container.
   extraEnvFrom: []
 
-# -- Database migration / pre-deploy job.
-# Runs `node ./scripts/self-host-predeploy.js` as an init container before the
-# server starts, so schema migrations are applied on install and upgrade.
+# -- Database migration job.
+# Runs `node ./scripts/self-host-predeploy.js` as a post-install/post-upgrade
+# Helm hook Job, exactly once per install/upgrade regardless of replicaCount.
 migration:
   enabled: true
   resources: {}

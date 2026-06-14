@@ -1,7 +1,6 @@
 # Helm Charts
 
-A collection of Helm charts for self-hosted applications, packaged to be served as
-a Helm repository over GitHub Pages.
+A collection of Helm charts for self-hosted applications.
 
 ## Available charts
 
@@ -11,62 +10,43 @@ a Helm repository over GitHub Pages.
 
 ## Usage
 
-Add the repository (replace the URL with your published GitHub Pages URL):
-
 ```bash
-helm repo add 0xfad https://<your-github-user>.github.io/helm-charts
+helm repo add 0xfad https://<owner>.github.io/helm-charts
 helm repo update
-```
-
-Install a chart, e.g. AFFiNE:
-
-```bash
 helm install affine 0xfad/affine \
   --set affine.serverExternalUrl=https://affine.example.com \
   --set postgresql.auth.password=<strong-password>
 ```
 
-See each chart's own README for the full set of configuration values
+See each chart's own README for the full list of values
 (e.g. [charts/affine/README.md](charts/affine/README.md)).
 
-### Install straight from a checkout
-
-You don't need the published repo to try a chart locally:
+### Install from a local checkout
 
 ```bash
-git clone https://github.com/<your-github-user>/helm-charts.git
-cd helm-charts
+git clone https://github.com/<owner>/helm-charts.git
 helm install affine ./charts/affine
 ```
 
-## Publishing (GitHub Pages)
+## Releasing a new version
 
-This repo is laid out so it can be served as a Helm chart repository. The typical
-flow is:
+1. Bump `version` in the chart's `Chart.yaml`
+2. Push to `main` — the [release workflow](.github/workflows/release.yml) packages
+   the chart, creates a GitHub Release with the `.tgz` as asset, and updates
+   `index.yaml` on the `gh-pages` branch automatically
 
-1. Package the charts and (re)generate the index:
+Pull requests only lint; nothing is published until merged to `main`.
 
-   ```bash
-   helm package charts/* --destination .
-   helm repo index . --url https://<your-github-user>.github.io/helm-charts
-   ```
+## First-time setup
 
-2. Commit the generated `*.tgz` packages and `index.yaml`, then enable **GitHub
-   Pages** for the repository (Settings → Pages → deploy from the `main` branch).
-
-3. Consumers can then `helm repo add` the Pages URL as shown above.
-
-> Tip: for an automated release pipeline, consider the
-> [`helm/chart-releaser-action`](https://github.com/helm/chart-releaser-action)
-> GitHub Action, which packages charts and publishes them to GitHub Releases +
-> Pages on every push to `main`.
+Enable GitHub Pages on the repository pointing to the `gh-pages` branch
+(Settings → Pages → Branch: `gh-pages` / `root`). The branch is created
+automatically on the first release.
 
 ## Development
 
-Lint and render a chart before committing:
-
 ```bash
-helm lint charts/affine
+helm lint --strict charts/affine
 helm template test charts/affine | less
 ```
 

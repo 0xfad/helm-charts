@@ -1,0 +1,56 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "affine.fullname" . }}-migration
+  labels:
+    {{- include "affine.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    # Run once after all resources are deployed, ensuring PostgreSQL and Redis
+    # are already up. Migrations run exactly once per install/upgrade regardless
+    # of replicaCount.
+    "helm.sh/hook": post-install,post-upgrade
+    # Delete the previous Job before creating the new one; keep failed Jobs
+    # in place so the operator can inspect logs before the next upgrade.
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "affine.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: default
+      automountServiceAccountToken: false
+      initContainers:
+        - name: wait-for-deps
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL at {{ include "affine.database.host" . }}:{{ include "affine.database.port" . }}..."
+              until nc -z {{ include "affine.database.host" . }} {{ include "affine.database.port" . }}; do sleep 2; done
+              echo "Waiting for Redis at {{ include "affine.redis.host" . }}:{{ ternary "6379" (printf "%v" .Values.externalRedis.port) .Values.redis.enabled }}..."
+              until nc -z {{ include "affine.redis.host" . }} {{ ternary "6379" (printf "%v" .Values.externalRedis.port) .Values.redis.enabled }}; do sleep 2; done
+              echo "Dependencies are ready."
+      containers:
+        - name: migration
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "./scripts/self-host-predeploy.js"]
+          env:
+            {{- include "affine.env" . | nindent 12 }}
+          {{- with .Values.migration.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

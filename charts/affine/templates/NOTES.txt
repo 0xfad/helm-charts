@@ -2,7 +2,7 @@ AFFiNE has been deployed. 🎉
 
 {{- if .Values.migration.enabled }}
 
-Database migrations run automatically as an init container on every install/upgrade.
+Database migrations run automatically as a post-install/post-upgrade Job on every install/upgrade.
 {{- end }}
 
 1. Wait for the AFFiNE pod to become ready:

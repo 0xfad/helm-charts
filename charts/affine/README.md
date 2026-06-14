@@ -20,12 +20,14 @@ the first admin account.
 | Component   | Image                                   | Notes                                  |
 |-------------|-----------------------------------------|----------------------------------------|
 | AFFiNE      | `ghcr.io/toeverything/affine:stable`    | Server, port 3010                      |
-| Migration   | same image                              | Init container: `self-host-predeploy.js` |
+| Migration   | same image                              | Helm hook Job (post-install, post-upgrade) |
 | PostgreSQL  | `pgvector/pgvector:pg16`                | Bundled, optional (`postgresql.enabled`) |
 | Redis       | `redis:7-alpine`                        | Bundled, optional (`redis.enabled`)    |
 
-The AFFiNE pod waits for the database and Redis via an init container, then runs
-the migration job before the server starts (on every install and upgrade).
+The migration runs as a Helm hook Job after all resources are deployed, exactly
+once per install/upgrade regardless of `replicaCount`. Each AFFiNE pod waits
+for PostgreSQL and Redis to be reachable via a `wait-for-deps` init container;
+on first install pods may briefly crash-loop until the migration Job completes.
 
 ## Persistence
 
@@ -58,12 +60,14 @@ externalRedis:
 
 See [values.yaml](values.yaml) for the full list. Most relevant:
 
-- `affine.serverExternalUrl` — public URL (required for invites/OAuth/email)
+- `affine.serverExternalUrl` — public URL (required for invites/OAuth/email); also sets `AFFINE_SERVER_HTTPS` automatically
+- `affine.privateKey.existingSecret` — bring your own secret for `AFFINE_PRIVATE_KEY`; if unset the chart auto-generates and persists the key across upgrades
 - `affine.indexerEnabled` — enable the full-text/AI indexer (needs pgvector)
 - `affine.extraEnv` / `affine.extraEnvFrom` — additional environment variables
 - `postgresql.auth.password` / `postgresql.auth.existingSecret`
 - `ingress.*` / `httpRoute.*` — exposure
 - `persistence.storage.*` / `persistence.config.*`
+- `migration.enabled` — set to `false` to skip the post-install/post-upgrade migration Job
 
 > **Note:** the database password is injected into `DATABASE_URL` via Kubernetes
 > `$(VAR)` expansion, so it is never rendered in plaintext into the manifests when

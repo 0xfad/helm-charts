@@ -1,0 +1,214 @@
+# Default values for the AFFiNE chart.
+# This is a YAML-formatted file.
+
+# Number of AFFiNE server replicas. Note that AFFiNE stores uploads on a
+# ReadWriteOnce volume by default, so running more than one replica requires a
+# ReadWriteMany storage class (or external object storage).
+replicaCount: 1
+
+# -- AFFiNE server image. See https://github.com/toeverything/AFFiNE/pkgs/container/affine
+image:
+  repository: ghcr.io/toeverything/affine
+  pullPolicy: IfNotPresent
+  # Image tag. Defaults to the chart appVersion ("stable"). Use "canary" for nightly builds
+  # or a pinned version such as "0.25.7".
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- AFFiNE application configuration.
+affine:
+  # Container port AFFiNE listens on (the upstream default is 3010).
+  port: 3010
+  # Public URL where AFFiNE is reachable, e.g. "https://affine.example.com".
+  # Required for invitations, OAuth callbacks and email links to work correctly.
+  serverExternalUrl: ""
+  # Disable the (resource-heavy) full-text indexer by default, matching the
+  # official docker-compose. Enable it only if you run pgvector and want search/AI.
+  indexerEnabled: false
+  # Extra environment variables passed verbatim to the AFFiNE container.
+  # See https://docs.affine.pro/self-host-affine/references/environment-variables
+  extraEnv: []
+    # - name: MAILER_HOST
+    #   value: smtp.example.com
+  # Extra envFrom sources (ConfigMaps / Secrets) for the AFFiNE container.
+  extraEnvFrom: []
+
+# -- Database migration / pre-deploy job.
+# Runs `node ./scripts/self-host-predeploy.js` as an init container before the
+# server starts, so schema migrations are applied on install and upgrade.
+migration:
+  enabled: true
+  resources: {}
+
+# -- Persistence for AFFiNE's local storage and config directories.
+persistence:
+  # Uploaded blobs / attachments -> /root/.affine/storage
+  storage:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  # Runtime configuration -> /root/.affine/config
+  config:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+
+# -- Bundled PostgreSQL (pgvector). Set enabled: false and fill externalDatabase
+# to use your own database.
+postgresql:
+  enabled: true
+  image:
+    repository: pgvector/pgvector
+    tag: pg16
+    pullPolicy: IfNotPresent
+  auth:
+    username: affine
+    password: affine
+    database: affine
+    # If set, the password is read from this secret (key: postgres-password) instead.
+    existingSecret: ""
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  resources: {}
+
+# -- External database (used when postgresql.enabled is false).
+externalDatabase:
+  host: ""
+  port: 5432
+  username: affine
+  password: ""
+  database: affine
+  # Read the password from an existing secret instead of the plain value above.
+  existingSecret: ""
+  existingSecretPasswordKey: password
+
+# -- Bundled Redis. Set enabled: false and fill externalRedis to use your own.
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: false
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+  resources: {}
+
+# -- External Redis (used when redis.enabled is false).
+externalRedis:
+  host: ""
+  port: 6379
+  password: ""
+  database: 0
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 1000
+
+securityContext: {}
+  # readOnlyRootFilesystem: false
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: affine.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: affine-tls
+    #   hosts:
+    #     - affine.local
+
+# -- Expose the service via gateway-api HTTPRoute
+# Requires Gateway API resources and a suitable controller installed in the cluster.
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+    - name: gateway
+      sectionName: http
+      # namespace: default
+  hostnames:
+    - affine.local
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+resources: {}
+  # limits:
+  #   cpu: "2"
+  #   memory: 2Gi
+  # requests:
+  #   cpu: 500m
+  #   memory: 1Gi
+
+livenessProbe:
+  httpGet:
+    path: /info
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 5
+readinessProbe:
+  httpGet:
+    path: /info
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the AFFiNE Deployment.
+volumes: []
+
+# Additional volumeMounts on the AFFiNE container.
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

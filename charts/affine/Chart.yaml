@@ -1,0 +1,22 @@
+apiVersion: v2
+name: affine
+description: A self-hosted AFFiNE workspace (https://affine.pro) with bundled PostgreSQL (pgvector) and Redis
+type: application
+# This is the chart version. Bump it on every change to the chart itself.
+version: 0.1.0
+# This is the version of AFFiNE that this chart deploys by default (image tag "stable").
+appVersion: "stable"
+home: https://affine.pro
+sources:
+  - https://github.com/toeverything/AFFiNE
+  - https://ghcr.io/toeverything/affine
+keywords:
+  - affine
+  - notes
+  - knowledge-base
+  - workspace
+  - collaboration
+icon: https://affine.pro/favicon-96.png
+maintainers:
+  - name: me
+    email: me@0xfad.dev

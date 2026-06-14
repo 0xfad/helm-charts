@@ -1,0 +1,49 @@
+AFFiNE has been deployed. 🎉
+
+{{- if .Values.migration.enabled }}
+
+Database migrations run automatically as an init container on every install/upgrade.
+{{- end }}
+
+1. Wait for the AFFiNE pod to become ready:
+
+   kubectl --namespace {{ .Release.Namespace }} rollout status deploy/{{ include "affine.fullname" . }}
+
+2. Reach the application:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+{{- range .paths }}
+   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+{{- end }}
+{{- end }}
+{{- else if .Values.httpRoute.enabled }}
+{{- range .Values.httpRoute.hostnames }}
+   http://{{ . }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "affine.fullname" . }})
+   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+   echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "affine.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+   echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else }}
+   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "affine.fullname" . }} 8080:{{ .Values.service.port }}
+   # then open http://127.0.0.1:8080
+{{- end }}
+
+3. Create the first admin account by opening the URL above and following the
+   onboarding wizard (or set up via the AFFiNE admin panel at /admin).
+
+{{- if not .Values.affine.serverExternalUrl }}
+
+WARNING: affine.serverExternalUrl is not set. Invitations, OAuth callbacks and
+email links may not work correctly. Set it to your public URL, e.g.:
+   --set affine.serverExternalUrl=https://affine.example.com
+{{- end }}
+{{- if and .Values.postgresql.enabled (eq .Values.postgresql.auth.password "affine") }}
+
+WARNING: you are using the default PostgreSQL password ("affine"). Override it
+for any real deployment with --set postgresql.auth.password=<strong-password>.
+{{- end }}

@@ -1,0 +1,29 @@
+apiVersion: v1
+entries:
+  affine:
+  - apiVersion: v2
+    appVersion: 0.26.6
+    created: "2026-06-14T17:24:01.250060807Z"
+    description: A self-hosted AFFiNE workspace (https://affine.pro) with bundled
+      PostgreSQL (pgvector) and Redis
+    digest: 09d7e6ab63ce963597317c31387bde0c0aa92ecd70cd9ed5c89e212a22e159a2
+    home: https://affine.pro
+    icon: https://affine.pro/favicon-96.png
+    keywords:
+    - affine
+    - notes
+    - knowledge-base
+    - workspace
+    - collaboration
+    maintainers:
+    - email: me@0xfad.dev
+      name: Marco Fadda
+    name: affine
+    sources:
+    - https://github.com/toeverything/AFFiNE
+    - https://ghcr.io/toeverything/affine
+    type: application
+    urls:
+    - https://github.com/0xfad/helm-charts/releases/download/affine-0.1.0/affine-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-06-14T17:24:01.250068256Z"
